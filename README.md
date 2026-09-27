@@ -438,3 +438,29 @@ git rm test/app_web/controllers/page_controller_test.exs \
 4. spend from it → envelope down, ledger untouched
 5. change the URL to another account → separate money, same app
 6. reload → numbers survive
+
+# Use Case 2
+
+2. Bills to pay (:date, :boolean)
+A bills table with name, amount, due_on :date, paid :boolean, and the envelope the money comes from. Use cases: list the bills due in the next 7 days, and "pay" a bill, which sets paid: true and debits the envelope in the same transaction, reusing the balance rule from spend.
+
+
+```sh
+mix phx.gen.live Budgets Bill bills account_id:string name:string amount:decimal due_on:date paid:boolean
+```
+
+router.ex
+```elixir
+    live "/bills", BillLive.Index, :index
+    live "/bills/new", BillLive.Form, :new
+    live "/bills/:id", BillLive.Show, :show
+    live "/bills/:id/edit", BillLive.Form, :edit
+```
+
+migration/create_bills
+```elixir
+create table(:bills, primary_key: false) do
+      add :id, :binary_id, primary_key: true
+...
+  create index(:bills, [:account_id])
+```
