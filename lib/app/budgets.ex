@@ -5,6 +5,7 @@ defmodule App.Budgets do
 
   import Ecto.Query, warn: false
 
+  alias App.Budgets.Bill
   alias App.Budgets.Envelope
   alias App.Budgets.Income
   alias App.Repo
@@ -154,6 +155,32 @@ defmodule App.Budgets do
       end
     else
       {:error, :invalid_amount}
+    end
+  end
+
+  def pay_bill(%{"account_id" => account_id, "envelope_id" => envelope_id, "bill_id" => bill_id}) do
+    Repo.transaction(fn ->
+      with {:ok, bill} <- mark_bill_paid(account_id, bill_id),
+          {:ok, _envelope} <- spend(envelope_id, bill.amount) do
+        {:ok, bill}
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  defp mark_bill_paid(account_id, bill_id) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    query =
+      from b in Bill,
+        where: b.id == ^bill_id and b.account_id == ^account_id and is_nil(b.paid_at),
+        select: b,
+        update: [set: [paid_at: ^DateTime.to_date(now), updated_at: ^now]]
+
+    case Repo.update_all(query, []) do
+      {1, [bill]} -> {:ok, bill}
+      {0, []} -> {:error, :bill_not_payable}
     end
   end
 
@@ -311,5 +338,108 @@ defmodule App.Budgets do
   """
   def change_income(%Income{} = income, attrs \\ %{}) do
     Income.changeset(income, attrs)
+  end
+
+  alias App.Budgets.Bill
+
+  @doc """
+  Returns the list of bills.
+
+  ## Examples
+
+      iex> list_bills()
+      [%Bill{}, ...]
+
+  """
+  def list_bills do
+    Repo.all(Bill)
+  end
+
+  def list_bills(account_id) do
+    Repo.all(from b in Bill,
+        where: b.account_id == ^account_id,
+        order_by: b.id)
+  end
+
+  @doc """
+  Gets a single bill.
+
+  Raises `Ecto.NoResultsError` if the Bill does not exist.
+
+  ## Examples
+
+      iex> get_bill!(123)
+      %Bill{}
+
+      iex> get_bill!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_bill!(id), do: Repo.get!(Bill, id)
+
+  @doc """
+  Creates a bill.
+
+  ## Examples
+
+      iex> create_bill(%{field: value})
+      {:ok, %Bill{}}
+
+      iex> create_bill(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_bill(attrs) do
+    %Bill{}
+    |> Bill.changeset(attrs)
+    |> Repo.insert()
+    |> dbg()
+  end
+
+  @doc """
+  Updates a bill.
+
+  ## Examples
+
+      iex> update_bill(bill, %{field: new_value})
+      {:ok, %Bill{}}
+
+      iex> update_bill(bill, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_bill(%Bill{} = bill, attrs) do
+    bill
+    |> Bill.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a bill.
+
+  ## Examples
+
+      iex> delete_bill(bill)
+      {:ok, %Bill{}}
+
+      iex> delete_bill(bill)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_bill(%Bill{} = bill) do
+    Repo.delete(bill)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking bill changes.
+
+  ## Examples
+
+      iex> change_bill(bill)
+      %Ecto.Changeset{data: %Bill{}}
+
+  """
+  def change_bill(%Bill{} = bill, attrs \\ %{}) do
+    Bill.changeset(bill, attrs)
   end
 end

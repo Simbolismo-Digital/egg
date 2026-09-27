@@ -27,6 +27,11 @@ defmodule AppWeb.Router do
     live "/incomes/:id", IncomeLive.Show, :show
     live "/incomes/:id/edit", IncomeLive.Form, :edit
 
+    live "/bills", BillLive.Index, :index
+    live "/bills/new", BillLive.Form, :new
+    live "/bills/:id", BillLive.Show, :show
+    live "/bills/:id/edit", BillLive.Form, :edit
+
     live "/", BudgetLive
     live "/:account", BudgetLive
   end

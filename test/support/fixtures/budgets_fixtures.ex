@@ -34,4 +34,22 @@ defmodule App.BudgetsFixtures do
 
     income
   end
+
+  @doc """
+  Generate a bill.
+  """
+  def bill_fixture(attrs \\ %{}) do
+    {:ok, bill} =
+      attrs
+      |> Enum.into(%{
+        account_id: "some account_id",
+        amount: "120.5",
+        due_on: ~D[2026-09-26],
+        name: "some name",
+        paid: true
+      })
+      |> App.Budgets.create_bill()
+
+    bill
+  end
 end

@@ -19,6 +19,16 @@ defmodule AppWeb.BudgetLive do
     {:noreply, load(socket)}
   end
 
+  def handle_event("new_bill", %{"name" => name, "amount" => amount, "due_on" => due_on}, socket) do
+    Budgets.create_bill(%{"account_id" => socket.assigns.account_id, "name" => name, "amount" => amount, "due_on" => due_on})
+    {:noreply, load(socket)}
+  end
+
+  def handle_event("pay_bill", %{"envelope_id" => envelope_id, "bill_id" => bill_id}, socket) do
+    Budgets.pay_bill(%{"account_id" => socket.assigns.account_id, "envelope_id" => envelope_id, "bill_id" => bill_id})
+    {:noreply, load(socket)}
+  end
+
   def handle_event("allocate", %{"envelope_id" => id, "amount" => amount}, socket) do
     Budgets.allocate(socket.assigns.account_id, id, amount)
     {:noreply, load(socket)}
@@ -29,13 +39,22 @@ defmodule AppWeb.BudgetLive do
     {:noreply, load(socket)}
   end
 
+  def handle_event("update_date", %{"due_on" => due_on}, socket) do
+    case Date.from_iso8601(due_on) do
+      {:ok, date} -> {:noreply, assign(socket, due_on: date)}
+      {:error, _} -> {:noreply, socket}
+    end
+  end
+
   defp load(socket) do
     account_id = socket.assigns.account_id
 
     assign(socket,
       income: Budgets.unallocated_income(account_id),
       entries: Budgets.list_income_entries(account_id),
-      envelopes: Budgets.list_envelopes(account_id)
+      envelopes: Budgets.list_envelopes(account_id),
+      bills: Budgets.list_bills(account_id),
+      due_on: Date.utc_today()
     )
   end
 
@@ -71,6 +90,7 @@ defmodule AppWeb.BudgetLive do
         <table class="w-full text-left">
           <thead>
             <tr class="border-b">
+              <th class="py-2">Id</th>
               <th class="py-2">Name</th>
               <th class="py-2">Balance</th>
               <th class="py-2">Move in</th>
@@ -79,6 +99,7 @@ defmodule AppWeb.BudgetLive do
           </thead>
           <tbody :for={envelope <- @envelopes} class="border-b">
             <tr>
+              <td class="py-2">{envelope.id}</td>
               <td class="py-2">{envelope.name}</td>
               <td class="py-2">{envelope.balance}</td>
               <td class="py-2">
@@ -117,6 +138,53 @@ defmodule AppWeb.BudgetLive do
                     <span>-{expense["amount"]}</span>
                   </li>
                 </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="space-y-2">
+        <h2 class="font-semibold">Bills</h2>
+        <form phx-submit="new_bill" class="flex gap-2">
+          <input type="text" name="name" placeholder="Groceries" class="rounded border px-2 py-1" />
+          <input
+            type="number"
+            step="0.01"
+            name="amount"
+            class="w-24 rounded border px-2 py-1"
+          />
+          <.input
+            type="date"
+            name="due_on"
+            value={@due_on}
+            phx-change="update_date"
+            label="Due on"
+          />
+          <button class="rounded border px-3 py-1">New bill</button>
+        </form>
+
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b">
+              <th class="py-2">Name</th>
+              <th class="py-2">Amount</th>
+              <th class="py-2">Due On</th>
+              <th class="py-2">Pay</th>
+            </tr>
+          </thead>
+          <tbody :for={bill <- @bills} class="border-b">
+            <tr>
+              <td class="py-2">{bill.name}</td>
+              <td class="py-2">{bill.amount}</td>
+              <td class="py-2">{bill.due_on}</td>
+              <td class="py-2">
+                <span :if={bill.paid_at}>✅ Confirmed</span>
+                <form :if={is_nil(bill.paid_at)} phx-submit="pay_bill" class="flex gap-1">
+                  <input type="text" name="envelope_id" placeholder="<uuid:03cb02b2-b621-46a1-b258-4745bbb11a2c>" class="rounded border px-2 py-1" />
+                  <input type="hidden" name="bill_id" value={bill.id} />
+                  <button class="rounded border px-2 py-1">Pay</button>
+                </form>
               </td>
             </tr>
           </tbody>

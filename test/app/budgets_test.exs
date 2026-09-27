@@ -121,4 +121,66 @@ defmodule App.BudgetsTest do
       assert %Ecto.Changeset{} = Budgets.change_income(income)
     end
   end
+
+  describe "bills" do
+    alias App.Budgets.Bill
+
+    import App.BudgetsFixtures
+
+    @invalid_attrs %{name: nil, amount: nil, account_id: nil, due_on: nil, paid: nil}
+
+    test "list_bills/0 returns all bills" do
+      bill = bill_fixture()
+      assert Budgets.list_bills() == [bill]
+    end
+
+    test "get_bill!/1 returns the bill with given id" do
+      bill = bill_fixture()
+      assert Budgets.get_bill!(bill.id) == bill
+    end
+
+    test "create_bill/1 with valid data creates a bill" do
+      valid_attrs = %{name: "some name", amount: "120.5", account_id: "some account_id", due_on: ~D[2026-09-26], paid: true}
+
+      assert {:ok, %Bill{} = bill} = Budgets.create_bill(valid_attrs)
+      assert bill.name == "some name"
+      assert bill.amount == Decimal.new("120.5")
+      assert bill.account_id == "some account_id"
+      assert bill.due_on == ~D[2026-09-26]
+      assert bill.paid == true
+    end
+
+    test "create_bill/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Budgets.create_bill(@invalid_attrs)
+    end
+
+    test "update_bill/2 with valid data updates the bill" do
+      bill = bill_fixture()
+      update_attrs = %{name: "some updated name", amount: "456.7", account_id: "some updated account_id", due_on: ~D[2026-09-27], paid: false}
+
+      assert {:ok, %Bill{} = bill} = Budgets.update_bill(bill, update_attrs)
+      assert bill.name == "some updated name"
+      assert bill.amount == Decimal.new("456.7")
+      assert bill.account_id == "some updated account_id"
+      assert bill.due_on == ~D[2026-09-27]
+      assert bill.paid == false
+    end
+
+    test "update_bill/2 with invalid data returns error changeset" do
+      bill = bill_fixture()
+      assert {:error, %Ecto.Changeset{}} = Budgets.update_bill(bill, @invalid_attrs)
+      assert bill == Budgets.get_bill!(bill.id)
+    end
+
+    test "delete_bill/1 deletes the bill" do
+      bill = bill_fixture()
+      assert {:ok, %Bill{}} = Budgets.delete_bill(bill)
+      assert_raise Ecto.NoResultsError, fn -> Budgets.get_bill!(bill.id) end
+    end
+
+    test "change_bill/1 returns a bill changeset" do
+      bill = bill_fixture()
+      assert %Ecto.Changeset{} = Budgets.change_bill(bill)
+    end
+  end
 end
