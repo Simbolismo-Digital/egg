@@ -7,9 +7,9 @@ defmodule App.CurrencyTest do
     test "source/0 returns all currency rates" do
       {:ok, rates} = Currency.source()
 
-      assert (rates
-      |> Map.keys()
-      |> length()) == 166
+      assert rates
+             |> Map.keys()
+             |> length() == 166
     end
 
     test "source/1 returns a currency rate" do

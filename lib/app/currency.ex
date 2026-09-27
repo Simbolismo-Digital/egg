@@ -1,6 +1,14 @@
 defmodule App.Currency do
   @source_url "https://open.er-api.com/v6/latest/USD"
 
+  def convert(amount, target_currency) do
+    with {:ok, rate} <- source(target_currency) do
+      Decimal.from_float(rate)
+      |> Decimal.mult(Decimal.new("#{amount}"))
+      |> Decimal.to_float()
+    end
+  end
+
   def source(currency) do
     case source() do
       {:ok, rates} ->
@@ -8,7 +16,9 @@ defmodule App.Currency do
           nil -> {:error, :not_found}
           rate -> {:ok, rate}
         end
-      {:error, error} -> {:error, error}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -16,6 +26,7 @@ defmodule App.Currency do
     case Req.get!(@source_url) do
       %{status: 200, body: body} ->
         parsed(body)
+
       _ ->
         {:error, :api_error}
     end
